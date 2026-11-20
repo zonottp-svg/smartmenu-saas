@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartMenu SaaS - Live Digital Menu</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- ភ្ជាប់ Supabase JS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', 'Kantumruy Pro', sans-serif; background-color: #f1f5f9; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .animate-slide-up { animation: slideUp 0.25s ease-out forwards; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-start sm:py-6">
+
+  <!-- Mobile App Container -->
+  <div class="w-full max-w-md bg-white min-h-screen sm:min-h-[820px] sm:rounded-3xl shadow-2xl relative flex flex-col overflow-hidden border border-slate-200">
+    
+    <!-- Header -->
+    <header class="px-4 pt-4 pb-3 bg-white sticky top-0 z-30 border-b border-slate-100">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-3">
+          <div id="shop-logo" class="w-11 h-11 rounded-2xl flex items-center justify-center text-xl font-bold text-white shadow-sm bg-amber-700">
+            ☕
+          </div>
+          <div>
+            <h1 id="shop-name" class="font-bold text-slate-900 text-base leading-tight">កំពុងផ្ទុក...</h1>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span id="table-badge" class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                📍 <span data-i18n="table">តុលេខ</span> <span id="table-num-display">05</span>
+              </span>
+              <span class="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span data-i18n="open">កំពុងបើក</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <button onclick="toggleLanguage()" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 transition">
+          <span id="lang-flag">🇰🇭</span>
+          <span id="lang-label">ខ្មែរ</span>
+        </button>
+      </div>
+
+      <!-- Search + AI Button -->
+      <div class="flex gap-2">
+        <div class="relative flex-1">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+          <input type="text" id="search-input" oninput="handleSearch(this.value)" placeholder="ស្វែងរកមុឺនុយ..." class="w-full pl-9 pr-3 py-2.5 bg-slate-100 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/40" />
+        </div>
+        <button onclick="openAIModal()" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm hover:opacity-95 active:scale-95 transition shrink-0">
+          <span>✨</span>
+          <span data-i18n="aiBtn">AI ជួយរើស</span>
+        </button>
+      </div>
+
+      <!-- Categories -->
+      <div id="category-tabs" class="flex gap-2 overflow-x-auto no-scrollbar pt-3 pb-1"></div>
+    </header>
+
+    <!-- AI Promo Banner -->
+    <div class="px-4 pt-3">
+      <div onclick="openAIModal()" class="cursor-pointer rounded-2xl p-3 bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 border border-indigo-100 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-white shadow-sm flex items-center justify-center text-lg">🤖</div>
+          <div>
+            <p class="text-xs font-bold text-indigo-950" data-i18n="aiBannerTitle">មិនដឹងញ៉ាំអ្វីមែនទេ?</p>
+            <p class="text-[11px] text-indigo-700" data-i18n="aiBannerDesc">សួរ AI ឱ្យណែនាំមុឺនុយពិតៗក្នុងហាងជូនអ្នក</p>
+          </div>
+        </div>
+        <span class="text-indigo-500 text-sm font-bold">→</span>
+      </div>
+    </div>
+
+    <!-- Menu List -->
+    <main id="menu-list" class="flex-1 px-4 py-4 space-y-3 pb-28 overflow-y-auto">
+      <div class="text-center py-12 text-slate-400 text-sm">កំពុងទាញមុឺនុយពី Database... ⏳</div>
+    </main>
+
+    <!-- Footer -->
+    <div class="text-center pb-24 pt-2 text-[11px] text-slate-400">
+      Powered by <span class="font-semibold text-slate-500">SmartMenu SaaS</span>
+    </div>
+
+    <!-- Floating Cart Bar -->
+    <div id="floating-cart" class="hidden fixed sm:absolute bottom-4 left-4 right-4 z-40">
+      <button onclick="openCartModal()" class="w-full bg-slate-900 text-white p-3.5 rounded-2xl shadow-xl flex items-center justify-between hover:bg-slate-800 active:scale-[0.99] transition">
+        <div class="flex items-center gap-3">
+          <div id="cart-count-badge" class="w-7 h-7 rounded-lg bg-amber-500 text-slate-950 font-bold text-sm flex items-center justify-center">0</div>
+          <span class="text-sm font-semibold" data-i18n="viewCart">មើលកន្ត្រកទំនិញ</span>
+        </div>
+        <div class="text-right">
+          <div id="cart-total-usd" class="text-sm font-bold">$0.00</div>
+          <div id="cart-total-khr" class="text-[10px] text-slate-300">0 ៛</div>
+        </div>
+      </button>
+    </div>
+
+    <!-- 1. Item Modal -->
+    <div id="item-modal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center">
+      <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 animate-slide-up max-h-[88vh] flex flex-col">
+        <div class="flex justify-between items-start mb-3">
+          <div class="flex gap-3 items-center">
+            <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-3xl">🍽️</div>
+            <div>
+              <h3 id="modal-item-name" class="font-bold text-slate-900 text-base"></h3>
+              <p id="modal-item-price" class="text-sm font-bold text-amber-600 mt-0.5"></p>
+            </div>
+          </div>
+          <button onclick="closeItemModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold">✕</button>
+        </div>
+
+        <p id="modal-item-desc" class="text-xs text-slate-500 mb-4 leading-relaxed"></p>
+
+        <div class="overflow-y-auto space-y-4 pr-1 flex-1">
+          <div id="option-size-group" class="hidden">
+            <label class="text-xs font-bold text-slate-800 block mb-2" data-i18n="chooseSize">ជ្រើសរើសទំហំ (Size)</label>
+            <div id="size-buttons" class="grid grid-cols-3 gap-2"></div>
+          </div>
+
+          <div id="option-sugar-group" class="hidden">
+            <label class="text-xs font-bold text-slate-800 block mb-2" data-i18n="chooseSugar">កម្រិតផ្អែម (Sugar)</label>
+            <div class="grid grid-cols-4 gap-2">
+              <button type="button" onclick="selectSugar('0%', this)" class="opt-sugar py-2 rounded-xl border text-xs font-semibold border-slate-200 text-slate-600">0%</button>
+              <button type="button" onclick="selectSugar('50%', this)" class="opt-sugar py-2 rounded-xl border text-xs font-semibold border-slate-200 text-slate-600">50%</button>
+              <button type="button" onclick="selectSugar('75%', this)" class="opt-sugar py-2 rounded-xl border text-xs font-semibold border-amber-600 bg-amber-50 text-amber-800">75%</button>
+              <button type="button" onclick="selectSugar('100%', this)" class="opt-sugar py-2 rounded-xl border text-xs font-semibold border-slate-200 text-slate-600">100%</button>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-xs font-bold text-slate-800 block mb-1.5" data-i18n="note">ចំណាំបន្ថែម (Note)</label>
+            <input type="text" id="modal-item-note" placeholder="ឧ. ទឹកកកតិច / មិនដាក់ជី..." class="w-full px-3 py-2 rounded-xl bg-slate-100 text-xs focus:outline-none" />
+          </div>
+        </div>
+
+        <div class="pt-4 mt-4 border-t border-slate-100 flex items-center gap-3">
+          <div class="flex items-center bg-slate-100 rounded-xl p-1">
+            <button onclick="changeModalQty(-1)" class="w-8 h-8 rounded-lg bg-white font-bold text-slate-700">-</button>
+            <span id="modal-qty" class="w-8 text-center text-sm font-bold">1</span>
+            <button onclick="changeModalQty(1)" class="w-8 h-8 rounded-lg bg-white font-bold text-slate-700">+</button>
+          </div>
+          <button onclick="addToCartFromModal()" id="modal-add-btn" class="flex-1 py-3 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 transition"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Real Gemini AI Modal -->
+    <div id="ai-modal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center">
+      <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 animate-slide-up max-h-[85vh] flex flex-col">
+        <div class="flex justify-between items-center mb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">🤖</span>
+            <div>
+              <h3 class="font-bold text-slate-900 text-sm" data-i18n="aiModalTitle">ជំនួយការ AI រើសមុឺនុយឆ្លាតវៃ</h3>
+              <p class="text-[11px] text-slate-500">ដំណើរការដោយ Google Gemini AI</p>
+            </div>
+          </div>
+          <button onclick="closeAIModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold">✕</button>
+        </div>
+
+        <!-- Quick Prompts -->
+        <div class="flex flex-wrap gap-1.5 mb-3">
+          <button onclick="askAI('តើហាងមានមុឺនុយអ្វីលក់ដាច់ជាងគេ?')" class="px-2.5 py-1.5 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-semibold border border-indigo-100">🔥 លក់ដាច់ប្រចាំហាង</button>
+          <button onclick="askAI('ថ្ងៃនេះក្តៅណាស់ ចង់ផឹកអ្វីត្រជាក់ៗ តម្លៃក្រោម $3')" class="px-2.5 py-1.5 rounded-full bg-sky-50 text-sky-700 text-[11px] font-semibold border border-sky-100">❄️ ត្រជាក់ៗ ក្រោម $3</button>
+          <button onclick="askAI('មិនចូលចិត្តផ្អែមទេ តើគួរកម្ម៉ង់អ្វីល្អ?')" class="px-2.5 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-semibold border border-emerald-100">🍃 មិនសូវផ្អែម</button>
+        </div>
+
+        <!-- Custom Input -->
+        <div class="flex gap-2 mb-3">
+          <input type="text" id="ai-input" placeholder="សួរ AI ឧ. ចង់ផឹកកាហ្វេខ្លាំង..." class="flex-1 px-3 py-2 rounded-xl bg-slate-100 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400" onkeydown="if(event.key==='Enter') askAI(this.value)" />
+          <button id="ai-send-btn" onclick="askAI(document.getElementById('ai-input').value)" class="px-3.5 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold">សួរ AI</button>
+        </div>
+
+        <!-- AI Response -->
+        <div id="ai-result-box" class="flex-1 overflow-y-auto bg-slate-50 rounded-2xl p-3.5 border border-slate-100 text-xs text-slate-700 leading-relaxed min-h-[140px]">
+          <p class="text-slate-400 text-center py-8">សូមចុចជម្រើសខាងលើ ឬវាយសំណួរសួរ AI ផ្ទាល់ ✨</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Cart Modal -->
+    <div id="cart-modal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center">
+      <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 animate-slide-up max-h-[90vh] flex flex-col">
+        <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+          <h3 class="font-bold text-slate-900 text-base">🛒 <span data-i18n="yourOrder">ការបញ្ជាទិញ</span> (<span id="cart-modal-table">តុ 05</span>)</h3>
+          <button onclick="closeCartModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold">✕</button>
+        </div>
+
+        <div id="cart-items-list" class="flex-1 overflow-y-auto py-3 space-y-2.5"></div>
+
+        <div class="pt-3 border-t border-slate-100 space-y-3">
+          <input type="text" id="checkout-note" placeholder="ចំណាំរួមសម្រាប់ផ្ទះបាយ (បើមាន)..." class="w-full px-3 py-2 rounded-xl bg-slate-100 text-xs focus:outline-none" />
+          <div class="bg-slate-50 p-3 rounded-xl space-y-1 text-xs">
+            <div class="flex justify-between text-slate-600">
+              <span>សរុប (USD)</span>
+              <span id="checkout-usd" class="font-bold text-slate-900 text-sm">$0.00</span>
+            </div>
+            <div class="flex justify-between text-slate-500">
+              <span>គិតជាប្រាក់រៀល</span>
+              <span id="checkout-khr" class="font-semibold">0 ៛</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <button id="btn-order-cash" onclick="submitOrder('cash')" class="py-3 rounded-xl border border-slate-300 text-slate-800 text-xs font-bold hover:bg-slate-50">
+              💵 បញ្ជាទិញ (គិតលុយក្រោយ)
+            </button>
+            <button id="btn-order-khqr" onclick="submitOrder('khqr')" class="py-3 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700">
+              📱 បង់តាម KHQR ភ្លាម
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Order Success Modal -->
+    <div id="success-modal" class="hidden fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+      <div class="bg-white w-full max-w-sm rounded-3xl p-6 text-center animate-slide-up">
+        <div class="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-3xl mx-auto mb-3">✓</div>
+        <h3 id="success-title" class="font-bold text-slate-900 text-lg mb-1">បញ្ជាទិញជោគជ័យ!</h3>
+        <p id="success-msg" class="text-xs text-slate-500 mb-4 leading-relaxed"></p>
+        <div id="khqr-box" class="hidden mb-4 p-3 bg-slate-50 rounded-2xl border border-slate-200">
+          <div class="bg-red-600 text-white text-[10px] font-bold py-1 rounded-t-lg">BAKONG KHQR</div>
+          <div class="p-3 bg-white border-x border-b border-slate-200 rounded-b-lg">
+            <div class="w-28 h-28 mx-auto bg-slate-900 rounded-lg flex items-center justify-center text-white text-xs font-mono">[ QR CODE ]</div>
+            <p id="khqr-amount" class="text-sm font-bold text-slate-900 mt-2"></p>
+          </div>
+        </div>
+        <button onclick="closeSuccessModal()" class="w-full py-3 rounded-xl bg-slate-900 text-white text-sm font-bold">រួចរាល់ (ត្រឡប់ទៅមុឺនុយ)</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ========================================================
+    // ⚙️ កំណត់ค่าភ្ជាប់ SUPABASE (Paste Publishable Key នៅទីនេះ)
+    // ========================================================
+    const SUPABASE_URL = 'https://ponxjbissjpvsobbuvkt.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_wsHp1UgGtjNUkCJGnleAxQ_4nlfY3Jn'; // ឧ. sb_publishable_xxx...
+
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // អាន ?shop=...&table=... ពី URL (សម្រាប់ Multi-Tenant QR Code)
+    const urlParams = new URLSearchParams(window.location.search);
+    const shopSlug = urlParams.get('shop') || 'aura-coffee';
+    const tableNum = urlParams.get('table') || '05';
+
+    let tenant = null;
+    let categories = [];
+    let menuItems = [];
+    let currentLang = 'km';
+    let currentCategory = 'all';
+    let searchQuery = '';
+    let cart = [];
+
+    let activeItem = null;
+    let modalState = { size: '', sizePrice: 0, sugar: '75%', qty: 1 };
+
+    const escapeHtml = (str) => String(str || '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+    const formatKHR = (usd) => Math.round(usd * (tenant?.exchange_rate || 4000)).toLocaleString('en-US') + ' ៛';
+
+    // ១. ទាញទិន្នន័យហាង និងមុឺនុយពី Supabase
+    async function initApp() {
+      document.getElementById('table-num-display').innerText = tableNum;
+      document.getElementById('cart-modal-table').innerText = `តុ ${tableNum}`;
+
+      if (SUPABASE_KEY === 'PASTE_YOUR_PUBLISHABLE_KEY_HERE') {
+        document.getElementById('shop-name').innerText = 'សូមដាក់ Supabase Key';
+        document.getElementById('menu-list').innerHTML = `
+          <div class="bg-amber-50 border border-amber-200 text-amber-900 p-4 rounded-2xl text-xs leading-relaxed">
+            <b>⚠️ មិនទាន់បានដាក់ Key៖</b> សូមបើកកូដ <code>index.html</code> ហើយជំនួសពាក្យ <code>PASTE_YOUR_PUBLISHABLE_KEY_HERE</code> ដោយ Publishable Key ពី Supabase របស់អ្នក។
+          </div>`;
+        return;
+      }
+
+      try {
+        const { data: tData, error: tErr } = await db
+          .from('tenants')
+          .select('*')
+          .eq('slug', shopSlug)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (tErr || !tData) {
+          document.getElementById('shop-name').innerText = 'រកមិនឃើញហាង';
+          document.getElementById('menu-list').innerHTML = `<div class="text-center py-12 text-rose-500 text-sm">រកមិនឃើញហាង "${escapeHtml(shopSlug)}" ទេ ❌</div>`;
+          return;
+        }
+
+        tenant = tData;
+        document.getElementById('shop-name').innerText = tenant.name;
+        document.getElementById('shop-logo').style.backgroundColor = tenant.theme_color || '#b45309';
+        document.getElementById('shop-logo').innerText = tenant.name.charAt(0).toUpperCase();
+
+        const [catRes, itemRes] = await Promise.all([
+          db.from('categories').select('*').eq('tenant_id', tenant.id).order('sort_order'),
+          db.from('menu_items').select('*').eq('tenant_id', tenant.id).eq('is_available', true)
+        ]);
+
+        categories = catRes.data || [];
+        menuItems = itemRes.data || [];
+
+        renderCategories();
+        renderMenu();
+      } catch (err) {
+        document.getElementById('menu-list').innerHTML = `<div class="text-center py-12 text-rose-500 text-xs">Error: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    function toggleLanguage() {
+      currentLang = currentLang === 'km' ? 'en' : 'km';
+      document.getElementById('lang-flag').innerText = currentLang === 'km' ? '🇰🇭' : '🇺🇸';
+      document.getElementById('lang-label').innerText = currentLang === 'km' ? 'ខ្មែរ' : 'EN';
+      document.getElementById('search-input').placeholder = currentLang === 'km' ? 'ស្វែងរកមុឺនុយ...' : 'Search menu...';
+      renderCategories();
+      renderMenu();
+    }
+
+    function renderCategories() {
+      const allTab = { id: 'all', name_km: 'ទាំងអស់', name_en: 'All' };
+      const list = [allTab, ...categories];
+      const brandColor = tenant?.theme_color || '#b45309';
+
+      document.getElementById('category-tabs').innerHTML = list.map(cat => {
+        const active = currentCategory === cat.id;
+        const label = currentLang === 'km' ? cat.name_km : (cat.name_en || cat.name_km);
+        return `
+          <button onclick="selectCategory('${cat.id}')" 
+            style="${active ? `background-color: ${brandColor}; color: white;` : ''}"
+            class="px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition ${active ? '' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+            ${escapeHtml(label)}
+          </button>
+        `;
+      }).join('');
+    }
+
+    function selectCategory(catId) {
+      currentCategory = catId;
+      renderCategories();
+      renderMenu();
+    }
+
+    function handleSearch(val) {
+      searchQuery = val.toLowerCase();
+      renderMenu();
+    }
+
+    function renderMenu() {
+      const container = document.getElementById('menu-list');
+      const filtered = menuItems.filter(item => {
+        const matchCat = currentCategory === 'all' || item.category_id === currentCategory;
+        const matchSearch = (item.name_km || '').toLowerCase().includes(searchQuery) || (item.name_en || '').toLowerCase().includes(searchQuery);
+        return matchCat && matchSearch;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="text-center py-12 text-slate-400 text-sm">គ្មានមុខម្ហូបទេ 🔍</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(item => {
+        const name = currentLang === 'km' ? item.name_km : (item.name_en || item.name_km);
+        const desc = currentLang === 'km' ? item.description_km : (item.description_en || item.description_km);
+        const isPopular = (item.ai_tags || []).includes('popular');
+        const price = Number(item.price_usd);
+
+        return `
+          <div onclick="openItemModal('${item.id}')" class="cursor-pointer bg-white p-3 rounded-2xl border border-slate-100 shadow-xs hover:shadow-md transition flex gap-3.5 items-center active:scale-[0.99]">
+            <div class="w-20 h-20 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-3xl shrink-0 relative overflow-hidden">
+              ${item.image_url ? `<img src="${escapeHtml(item.image_url)}" class="w-full h-full object-cover" />` : '☕'}
+              ${isPopular ? '<span class="absolute top-1 left-1 bg-rose-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">🔥 Hit</span>' : ''}
+            </div>
+            <div class="flex-1 min-w-0">
+              <h3 class="font-bold text-slate-900 text-sm truncate">${escapeHtml(name)}</h3>
+              <p class="text-[11px] text-slate-500 line-clamp-2 mt-0.5 leading-relaxed">${escapeHtml(desc || '')}</p>
+              <div class="flex items-center justify-between mt-2">
+                <div>
+                  <span class="font-bold text-slate-900 text-sm">$${price.toFixed(2)}</span>
+                  <span class="text-[10px] text-slate-400 ml-1">(${formatKHR(price)})</span>
+                </div>
+                <span class="w-7 h-7 rounded-lg bg-slate-900 text-white flex items-center justify-center text-sm font-bold">+</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ២. Item Customization Modal
+    function openItemModal(itemId) {
+      activeItem = menuItems.find(i => i.id === itemId);
+      if (!activeItem) return;
+
+      const sizes = activeItem.options?.sizes || [];
+      const hasSugar = activeItem.options?.has_sugar || false;
+      modalState = {
+        size: sizes.length ? sizes[0].name : '',
+        sizePrice: sizes.length ? Number(sizes[0].price || 0) : 0,
+        sugar: hasSugar ? '75%' : '',
+        qty: 1
+      };
+
+      document.getElementById('modal-item-name').innerText = currentLang === 'km' ? activeItem.name_km : (activeItem.name_en || activeItem.name_km);
+      document.getElementById('modal-item-desc').innerText = currentLang === 'km' ? (activeItem.description_km || '') : (activeItem.description_en || '');
+      document.getElementById('modal-item-note').value = '';
+      document.getElementById('modal-qty').innerText = '1';
+
+      const sizeGroup = document.getElementById('option-size-group');
+      if (sizes.length > 0) {
+        sizeGroup.classList.remove('hidden');
+        document.getElementById('size-buttons').innerHTML = sizes.map((s, idx) => `
+          <button type="button" onclick="selectSize('${escapeHtml(s.name)}', ${Number(s.price || 0)}, this)"
+            class="opt-size py-2 rounded-xl border text-xs font-semibold ${idx === 0 ? 'border-amber-600 bg-amber-50 text-amber-800' : 'border-slate-200 text-slate-600'}">
+            ${escapeHtml(s.name)} (+$${Number(s.price || 0).toFixed(2)})
+          </button>
+        `).join('');
+      } else {
+        sizeGroup.classList.add('hidden');
+      }
+
+      document.getElementById('option-sugar-group').classList.toggle('hidden', !hasSugar);
+      updateModalPrice();
+      document.getElementById('item-modal').classList.remove('hidden');
+    }
+
+    function closeItemModal() { document.getElementById('item-modal').classList.add('hidden'); }
+
+    function selectSize(name, price, btn) {
+      modalState.size = name;
+      modalState.sizePrice = price;
+      document.querySelectorAll('.opt-size').forEach(b => b.className = 'opt-size py-2 rounded-xl border text-xs font-semibold border-slate-200 text-slate-600');
+      btn.className = 'opt-size py-2 rounded-xl border text-xs font-semibold border-amber-600 bg-amber-50 text-amber-800';
+      updateModalPrice();
+    }
+
+    function selectSugar(val, btn) {
+      modalState.sugar = val;
+      document.querySelectorAll('.opt-sugar').forEach(b => b.className = 'opt-sugar py-2 rounded-xl border text-xs font-semibold border-slate-200 text-slate-600');
+      btn.className = 'opt-sugar py-2 rounded-xl border text-xs font-semibold border-amber-600 bg-amber-50 text-amber-800';
+    }
+
+    function changeModalQty(delta) {
+      modalState.qty = Math.max(1, modalState.qty + delta);
+      document.getElementById('modal-qty').innerText = modalState.qty;
+      updateModalPrice();
+    }
+
+    function updateModalPrice() {
+      const unitPrice = Number(activeItem.price_usd) + modalState.sizePrice;
+      const total = unitPrice * modalState.qty;
+      document.getElementById('modal-item-price').innerText = `$${unitPrice.toFixed(2)} (${formatKHR(unitPrice)})`;
+      document.getElementById('modal-add-btn').innerText = `${currentLang === 'km' ? 'បន្ថែម' : 'Add'} • $${total.toFixed(2)}`;
+    }
+
+    function addToCartFromModal() {
+      const unitPrice = Number(activeItem.price_usd) + modalState.sizePrice;
+      const note = document.getElementById('modal-item-note').value.trim();
+      const selectedOptions = {};
+      if (modalState.size) selectedOptions.size = `Size ${modalState.size}`;
+      if (modalState.sugar) selectedOptions.sugar = `ផ្អែម ${modalState.sugar}`;
+      if (note) selectedOptions.note = note;
+
+      cart.push({
+        item: activeItem,
+        unitPrice,
+        qty: modalState.qty,
+        selectedOptions,
+        details: Object.values(selectedOptions).join(' • ')
+      });
+      closeItemModal();
+      updateCartUI();
+    }
+
+    // ៣. Cart & ផ្ញើ Order ទៅ Edge Function (`place-order`)
+    function updateCartUI() {
+      const bar = document.getElementById('floating-cart');
+      if (cart.length === 0) { bar.classList.add('hidden'); return; }
+      bar.classList.remove('hidden');
+      const totalQty = cart.reduce((sum, c) => sum + c.qty, 0);
+      const totalUSD = cart.reduce((sum, c) => sum + (c.unitPrice * c.qty), 0);
+      document.getElementById('cart-count-badge').innerText = totalQty;
+      document.getElementById('cart-total-usd').innerText = `$${totalUSD.toFixed(2)}`;
+      document.getElementById('cart-total-khr').innerText = formatKHR(totalUSD);
+    }
+
+    function openCartModal() {
+      document.getElementById('cart-items-list').innerHTML = cart.map((c, idx) => `
+        <div class="flex items-center justify-between gap-3 bg-slate-50 p-3 rounded-2xl">
+          <div>
+            <h4 class="font-bold text-slate-900 text-xs">${escapeHtml(currentLang === 'km' ? c.item.name_km : (c.item.name_en || c.item.name_km))}</h4>
+            <p class="text-[10px] text-slate-500">${escapeHtml(c.details || 'ស្តង់ដារ')}</p>
+            <p class="text-xs font-bold text-amber-700 mt-0.5">$${(c.unitPrice * c.qty).toFixed(2)}</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold bg-white px-2.5 py-1 rounded-lg border border-slate-200">x${c.qty}</span>
+            <button onclick="removeCartItem(${idx})" class="text-rose-500 text-xs font-bold px-1.5 py-1">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+
+      const totalUSD = cart.reduce((sum, c) => sum + (c.unitPrice * c.qty), 0);
+      document.getElementById('checkout-usd').innerText = `$${totalUSD.toFixed(2)}`;
+      document.getElementById('checkout-khr').innerText = formatKHR(totalUSD);
+      document.getElementById('cart-modal').classList.remove('hidden');
+    }
+
+    function closeCartModal() { document.getElementById('cart-modal').classList.add('hidden'); }
+
+    function removeCartItem(index) {
+      cart.splice(index, 1);
+      updateCartUI();
+      if (cart.length === 0) closeCartModal();
+      else openCartModal();
+    }
+
+    async function submitOrder(paymentType) {
+      const btnCash = document.getElementById('btn-order-cash');
+      const btnKhqr = document.getElementById('btn-order-khqr');
+      btnCash.disabled = true; btnKhqr.disabled = true;
+      btnCash.innerText = 'កំពុងផ្ញើ...';
+
+      try {
+        const customerNote = document.getElementById('checkout-note').value.trim();
+        const { data, error } = await db.functions.invoke('place-order', {
+          body: {
+            tenant_slug: shopSlug,
+            table_number: tableNum,
+            payment_method: paymentType,
+            customer_note: customerNote,
+            items: cart.map(c => ({
+              menu_item_id: c.item.id,
+              name: c.item.name_km,
+              quantity: c.qty,
+              unit_price_usd: c.unitPrice,
+              selected_options: c.selectedOptions
+            }))
+          }
+        });
+
+        if (error) throw new Error(error.message || 'បរាជ័យក្នុងការផ្ញើ Order');
+
+        closeCartModal();
+        document.getElementById('success-title').innerText = `បញ្ជាទិញជោគជ័យ! (${data.order_code})`;
+        const khqrBox = document.getElementById('khqr-box');
+        if (paymentType === 'khqr') {
+          khqrBox.classList.remove('hidden');
+          document.getElementById('khqr-amount').innerText = `$${Number(data.total_usd).toFixed(2)} (${Number(data.total_khr).toLocaleString()} ៛)`;
+          document.getElementById('success-msg').innerText = 'វិក្កយបត្រត្រូវបានផ្ញើចូល Telegram ផ្ទះបាយរួចរាល់! សូមស្កេន KHQR ខាងក្រោមដើម្បីទូទាត់។';
+        } else {
+          khqrBox.classList.add('hidden');
+          document.getElementById('success-msg').innerText = `ការកុម្ម៉ង់តុលេខ ${tableNum} ត្រូវបានផ្ញើចូល Telegram ផ្ទះបាយដោយជោគជ័យ!`;
+        }
+
+        cart = [];
+        document.getElementById('checkout-note').value = '';
+        updateCartUI();
+        document.getElementById('success-modal').classList.remove('hidden');
+      } catch (err) {
+        alert('Error: ' + err.message);
+      } finally {
+        btnCash.disabled = false; btnKhqr.disabled = false;
+        btnCash.innerText = '💵 បញ្ជាទិញ (គិតលុយក្រោយ)';
+      }
+    }
+
+    function closeSuccessModal() { document.getElementById('success-modal').classList.add('hidden'); }
+
+    // ៤. ហៅ Gemini AI ពិតៗតាម Edge Function (`ai-recommend`)
+    function openAIModal() { document.getElementById('ai-modal').classList.remove('hidden'); }
+    function closeAIModal() { document.getElementById('ai-modal').classList.add('hidden'); }
+
+    async function askAI(promptText) {
+      const prompt = (promptText || '').trim();
+      if (!prompt) return;
+
+      const box = document.getElementById('ai-result-box');
+      const sendBtn = document.getElementById('ai-send-btn');
+      sendBtn.disabled = true;
+      box.innerHTML = `<div class="text-center py-8 text-indigo-600 font-semibold animate-pulse">🤖 Gemini AI កំពុងវិភាគមុឺនុយជូនអ្នក...</div>`;
+
+      try {
+        const { data, error } = await db.functions.invoke('ai-recommend', {
+          body: { tenant_slug: shopSlug, prompt }
+        });
+
+        if (error) throw new Error(error.message || 'AI error');
+        const safeReply = escapeHtml(data.reply).replace(/\n/g, '<br>');
+        box.innerHTML = `<div class="text-slate-800 leading-relaxed">${safeReply}</div>`;
+      } catch (err) {
+        box.innerHTML = `<div class="text-rose-500 text-center py-6">មានបញ្ហា: ${escapeHtml(err.message)}</div>`;
+      } finally {
+        sendBtn.disabled = false;
+      }
+    }
+
+    initApp();
+  </script>
+</body>
+</html>

@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartMenu SaaS - Admin Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', 'Kantumruy Pro', sans-serif; background-color: #f8fafc; }
+  </style>
+</head>
+<body class="min-h-screen text-slate-800">
+
+  <!-- 1. AUTH SCREEN (Login / Sign Up) -->
+  <div id="auth-screen" class="hidden min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-3xl shadow-xl border border-slate-100 p-7">
+      <div class="text-center mb-6">
+        <div class="w-12 h-12 rounded-2xl bg-indigo-600 text-white text-2xl flex items-center justify-center mx-auto mb-3 shadow-md">🏪</div>
+        <h1 class="text-xl font-bold text-slate-900">SmartMenu SaaS Admin</h1>
+        <p class="text-xs text-slate-500 mt-1">ប្រព័ន្ធគ្រប់គ្រងមុឺនុយវៃឆ្លាតសម្រាប់ម្ចាស់ហាង</p>
+      </div>
+
+      <div class="flex bg-slate-100 p-1 rounded-xl mb-5 text-xs font-semibold">
+        <button onclick="setAuthMode('login')" id="tab-login" class="flex-1 py-2 rounded-lg bg-white shadow-xs text-slate-900">ចូលគណនី (Login)</button>
+        <button onclick="setAuthMode('signup')" id="tab-signup" class="flex-1 py-2 rounded-lg text-slate-500">ចុះឈ្មោះថ្មី (Sign Up)</button>
+      </div>
+
+      <form onsubmit="handleAuth(event)" class="space-y-3.5">
+        <div>
+          <label class="text-xs font-semibold text-slate-700 block mb-1">អ៊ីមែល (Email)</label>
+          <input type="email" id="auth-email" required placeholder="owner@shop.com" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30" />
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-700 block mb-1">ពាក្យសម្ងាត់ (Password)</label>
+          <input type="password" id="auth-password" required minlength="6" placeholder="យ៉ាងតិច ៦ តួអក្សរ" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30" />
+        </div>
+        <button type="submit" id="auth-submit-btn" class="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold transition shadow-sm">ចូលគ្រប់គ្រងហាង</button>
+      </form>
+      <p id="auth-msg" class="text-xs text-center mt-4 text-rose-500"></p>
+    </div>
+  </div>
+
+  <!-- 2. ONBOARDING SCREEN (បង្កើតហាងថ្មីសម្រាប់គណនីថ្មី) -->
+  <div id="onboarding-screen" class="hidden min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-3xl shadow-xl border border-slate-100 p-7">
+      <h2 class="text-lg font-bold text-slate-900 mb-1">🎉 ស្វាគមន៍! សូមបង្កើតហាងរបស់អ្នក</h2>
+      <p class="text-xs text-slate-500 mb-5">បំពេញព័ត៌មានខាងក្រោមដើម្បីទទួលបាន Link មុឺនុយ និង QR Code ភ្លាមៗ។</p>
+      <form onsubmit="createTenant(event)" class="space-y-3.5">
+        <div>
+          <label class="text-xs font-semibold text-slate-700 block mb-1">ឈ្មោះហាង (Shop Name)</label>
+          <input type="text" id="ob-name" required placeholder="ឧ. Blue Sky Coffee" oninput="autoSlug(this.value)" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm" />
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-700 block mb-1">Link សម្គាល់ហាង (Slug - អក្សរអង់គ្លេសតូច)</label>
+          <input type="text" id="ob-slug" required placeholder="blue-sky-coffee" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono bg-slate-50" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-semibold text-slate-700 block mb-1">ពណ៌ Brand</label>
+            <input type="color" id="ob-color" value="#4f46e5" class="w-full h-10 rounded-xl border border-slate-200 cursor-pointer" />
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-700 block mb-1">Telegram Chat ID (បើមាន)</label>
+            <input type="text" id="ob-tg" placeholder="-100..." class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" />
+          </div>
+        </div>
+        <button type="submit" class="w-full py-3 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700">បង្កើតហាងឥឡូវនេះ →</button>
+      </form>
+      <button onclick="logout()" class="w-full mt-3 text-xs text-slate-400 hover:text-slate-600">ចាកចេញពីគណនី</button>
+    </div>
+  </div>
+
+  <!-- 3. MAIN ADMIN DASHBOARD -->
+  <div id="dashboard-screen" class="hidden min-h-screen flex flex-col">
+    <!-- Top Navbar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+      <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div id="dash-logo" class="w-9 h-9 rounded-xl bg-indigo-600 text-white font-bold flex items-center justify-center">S</div>
+          <div>
+            <h1 id="dash-shop-name" class="font-bold text-slate-900 text-sm sm:text-base leading-tight">Shop Name</h1>
+            <a id="dash-preview-link" href="#" target="_blank" class="text-[11px] text-indigo-600 hover:underline font-medium">🔗 បើកមើលវេបសាយមុឺនុយភ្ញៀវ ↗</a>
+          </div>
+        </div>
+        <button onclick="logout()" class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50">ចាកចេញ</button>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="max-w-6xl mx-auto px-4 flex gap-4 overflow-x-auto text-xs font-semibold border-t border-slate-100">
+        <button onclick="switchTab('orders')" id="nav-orders" class="py-3 border-b-2 border-indigo-600 text-indigo-600 whitespace-nowrap">📋 ការកុម្ម៉ង់ផ្ទាល់</button>
+        <button onclick="switchTab('menu')" id="nav-menu" class="py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap">🍽️ គ្រប់គ្រងមុឺនុយ</button>
+        <button onclick="switchTab('tables')" id="nav-tables" class="py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap">📱 តុ & QR Code</button>
+        <button onclick="switchTab('settings')" id="nav-settings" class="py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap">⚙️ កំណត់ហាង</button>
+      </div>
+    </header>
+
+    <main class="max-w-6xl w-full mx-auto px-4 py-6 flex-1">
+      
+      <!-- TAB 1: ORDERS -->
+      <section id="sec-orders" class="space-y-4">
+        <div class="flex justify-between items-center">
+          <h2 class="font-bold text-slate-900 text-base">បញ្ជីការកុម្ម៉ង់ថ្មីៗ</h2>
+          <button onclick="loadOrders()" class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-semibold hover:bg-slate-50">🔄 ទាញទិន្នន័យថ្មី</button>
+        </div>
+        <div id="orders-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </section>
+
+      <!-- TAB 2: MENU MANAGER -->
+      <section id="sec-menu" class="hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Left Forms: Category + Add Item -->
+          <div class="space-y-5">
+            <!-- Add Category -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+              <h3 class="font-bold text-sm mb-3">១. បន្ថែមប្រភេទមុឺនុយ (Category)</h3>
+              <form onsubmit="addCategory(event)" class="space-y-2.5">
+                <input type="text" id="cat-km" required placeholder="ឈ្មោះខ្មែរ (ឧ. កាហ្វេ)" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+                <input type="text" id="cat-en" placeholder="English Name (e.g. Coffee)" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+                <button type="submit" class="w-full py-2 rounded-xl bg-slate-900 text-white text-xs font-bold">+ បន្ថែមប្រភេទ</button>
+              </form>
+            </div>
+
+            <!-- Add Menu Item -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+              <h3 class="font-bold text-sm mb-3">២. បន្ថែមមុខម្ហូប / ភេសជ្ជៈថ្មី</h3>
+              <form onsubmit="addMenuItem(event)" class="space-y-2.5">
+                <select id="item-cat" required class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white"></select>
+                <input type="text" id="item-km" required placeholder="ឈ្មោះខ្មែរ (ឧ. ឡាតេទឹកកក)" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+                <input type="text" id="item-en" placeholder="English Name (e.g. Iced Latte)" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+                <input type="number" step="0.01" id="item-price" required placeholder="តម្លៃ USD (ឧ. 2.50)" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+                <textarea id="item-desc" rows="2" placeholder="ការពិពណ៌នាខ្លីៗ..." class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs"></textarea>
+                <input type="url" id="item-img" placeholder="Link រូបភាព (បើមាន https://...)" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+                <input type="text" id="item-tags" placeholder="AI Tags (ឧ. popular, cold, sweet)" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs" />
+                <div class="flex gap-4 py-1 text-xs">
+                  <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="item-sugar" /> មានរើសកម្រិតផ្អែម</label>
+                  <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="item-sizes" /> មាន Size (S/M/L)</label>
+                </div>
+                <button type="submit" class="w-full py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700">+ រក្សាទុកមុខម្ហូប</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Right List: Menu Items -->
+          <div class="lg:col-span-2 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <h3 class="font-bold text-sm mb-3">បញ្ជីមុខម្ហូបក្នុងហាង (<span id="menu-count">0</span>)</h3>
+            <div id="admin-menu-list" class="space-y-2.5"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: TABLES & QR CODES -->
+      <section id="sec-tables" class="hidden space-y-5">
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 flex flex-col sm:flex-row gap-3 items-end">
+          <div class="flex-1 w-full">
+            <label class="text-xs font-semibold text-slate-600 block mb-1">Link វេបសាយមុឺនុយមេ (`index.html`)</label>
+            <input type="text" id="qr-base-url" oninput="renderTables()" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono bg-slate-50" />
+          </div>
+          <form onsubmit="addTable(event)" class="flex gap-2 w-full sm:w-auto">
+            <input type="text" id="new-table-num" required placeholder="លេខតុ (ឧ. 06, VIP1)" class="px-3 py-2 rounded-xl border border-slate-200 text-xs flex-1" />
+            <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold whitespace-nowrap">+ បន្ថែមតុ</button>
+          </form>
+        </div>
+
+        <div id="tables-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+      </section>
+
+      <!-- TAB 4: SETTINGS -->
+      <section id="sec-settings" class="hidden max-w-xl">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+          <h3 class="font-bold text-base mb-4">កំណត់ព័ត៌មានហាង</h3>
+          <form onsubmit="saveSettings(event)" class="space-y-3.5 text-xs">
+            <div>
+              <label class="font-semibold block mb-1">ឈ្មោះហាង</label>
+              <input type="text" id="set-name" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200" />
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="font-semibold block mb-1">ពណ៌ Brand</label>
+                <input type="color" id="set-color" class="w-full h-10 rounded-xl border border-slate-200" />
+              </div>
+              <div>
+                <label class="font-semibold block mb-1">អត្រាប្តូរប្រាក់ (1$ = ?៛)</label>
+                <input type="number" id="set-rate" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200" />
+              </div>
+            </div>
+            <div>
+              <label class="font-semibold block mb-1">Telegram Group Chat ID (សម្រាប់ទទួល Order)</label>
+              <input type="text" id="set-tg" placeholder="-100..." class="w-full px-3 py-2.5 rounded-xl border border-slate-200 font-mono" />
+            </div>
+            <div>
+              <label class="font-semibold block mb-1">Bakong Account ID (KHQR)</label>
+              <input type="text" id="set-khqr" placeholder="your_shop@aclb" class="w-full px-3 py-2.5 rounded-xl border border-slate-200" />
+            </div>
+            <button type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700">💾 រក្សាទុកការផ្លាស់ប្តូរ</button>
+          </form>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    // ========================================================
+    // ⚙️ កំណត់ค่า SUPABASE (Paste Publishable Key ដូច index.html)
+    // ========================================================
+    const SUPABASE_URL = 'https://ponxjbissjpvsobbuvkt.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_wsHp1UgGtjNUkCJGnleAxQ_4nlfY3Jn';
+
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let authMode = 'login';
+    let currentUser = null;
+    let tenant = null;
+    let categories = [];
+    let menuItems = [];
+    let tables = [];
+    let orders = [];
+
+    const escapeHtml = (str) => String(str || '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+
+    // ១. Authentication Flow
+    async function init() {
+      if (SUPABASE_KEY === 'PASTE_YOUR_PUBLISHABLE_KEY_HERE') {
+        alert('សូមដាក់ SUPABASE_KEY នៅក្នុងកូដ admin.html ជាមុនសិន!');
+        return;
+      }
+      document.getElementById('qr-base-url').value = window.location.href.split('?')[0].replace('admin.html', 'index.html');
+
+      const { data: { session } } = await db.auth.getSession();
+      if (!session) {
+        showScreen('auth-screen');
+      } else {
+        currentUser = session.user;
+        await loadTenant();
+      }
+    }
+
+    function showScreen(id) {
+      ['auth-screen', 'onboarding-screen', 'dashboard-screen'].forEach(s => document.getElementById(s).classList.add('hidden'));
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    function setAuthMode(mode) {
+      authMode = mode;
+      document.getElementById('tab-login').className = mode === 'login' ? 'flex-1 py-2 rounded-lg bg-white shadow-xs text-slate-900' : 'flex-1 py-2 rounded-lg text-slate-500';
+      document.getElementById('tab-signup').className = mode === 'signup' ? 'flex-1 py-2 rounded-lg bg-white shadow-xs text-slate-900' : 'flex-1 py-2 rounded-lg text-slate-500';
+      document.getElementById('auth-submit-btn').innerText = mode === 'login' ? 'ចូលគ្រប់គ្រងហាង' : 'ចុះឈ្មោះបង្កើតគណនី';
+      document.getElementById('auth-msg').innerText = '';
+    }
+
+    async function handleAuth(e) {
+      e.preventDefault();
+      const email = document.getElementById('auth-email').value.trim();
+      const password = document.getElementById('auth-password').value;
+      const msgEl = document.getElementById('auth-msg');
+      msgEl.innerText = '';
+
+      if (authMode === 'login') {
+        const { data, error } = await db.auth.signInWithPassword({ email, password });
+        if (error) { msgEl.innerText = error.message; return; }
+        currentUser = data.user;
+        await loadTenant();
+      } else {
+        const { data, error } = await db.auth.signUp({ email, password });
+        if (error) { msgEl.innerText = error.message; return; }
+        if (!data.session) {
+          msgEl.className = 'text-xs text-center mt-4 text-emerald-600 font-semibold';
+          msgEl.innerText = 'ចុះឈ្មោះជោគជ័យ! សូមពិនិត្យ Gmail ដើម្បី Confirm (ឬបិទ Confirm email ក្នុង Supabase Auth)';
+          return;
+        }
+        currentUser = data.user;
+        await loadTenant();
+      }
+    }
+
+    async function logout() {
+      await db.auth.signOut();
+      location.reload();
+    }
+
+    // ២. Load or Create Tenant (SaaS Onboarding)
+    async function loadTenant() {
+      const { data, error } = await db.from('tenants').select('*').eq('owner_id', currentUser.id).limit(1).maybeSingle();
+      if (!data) {
+        showScreen('onboarding-screen');
+        return;
+      }
+      tenant = data;
+      showScreen('dashboard-screen');
+      renderDashboardHeader();
+      await Promise.all([loadOrders(), loadMenu(), loadTables()]);
+      setInterval(loadOrders, 15000); // Auto-refresh orders every 15s
+    }
+
+    function autoSlug(val) {
+      document.getElementById('ob-slug').value = val.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    }
+
+    async function createTenant(e) {
+      e.preventDefault();
+      const name = document.getElementById('ob-name').value.trim();
+      const slug = document.getElementById('ob-slug').value.trim();
+      const theme_color = document.getElementById('ob-color').value;
+      const telegram_chat_id = document.getElementById('ob-tg').value.trim();
+
+      const { data, error } = await db.from('tenants').insert({
+        owner_id: currentUser.id, name, slug, theme_color, telegram_chat_id
+      }).select().single();
+
+      if (error) { alert('Error: ' + error.message); return; }
+
+      // បង្កើតតុលេខ 01 ជាគំរូស្វ័យប្រវត្តិ
+      await db.from('restaurant_tables').insert({ tenant_id: data.id, table_number: '01' });
+      await loadTenant();
+    }
+
+    function renderDashboardHeader() {
+      document.getElementById('dash-shop-name').innerText = tenant.name;
+      document.getElementById('dash-logo').style.backgroundColor = tenant.theme_color || '#4f46e5';
+      document.getElementById('dash-logo').innerText = tenant.name.charAt(0).toUpperCase();
+      const base = document.getElementById('qr-base-url').value;
+      document.getElementById('dash-preview-link').href = `${base}?shop=${tenant.slug}&table=01`;
+
+      // Populate settings form
+      document.getElementById('set-name').value = tenant.name;
+      document.getElementById('set-color').value = tenant.theme_color || '#4f46e5';
+      document.getElementById('set-rate').value = tenant.exchange_rate || 4000;
+      document.getElementById('set-tg').value = tenant.telegram_chat_id || '';
+      document.getElementById('set-khqr').value = tenant.bakong_account_id || '';
+    }
+
+    function switchTab(tab) {
+      ['orders', 'menu', 'tables', 'settings'].forEach(t => {
+        document.getElementById(`sec-${t}`).classList.toggle('hidden', t !== tab);
+        document.getElementById(`nav-${t}`).className = t === tab
+          ? 'py-3 border-b-2 border-indigo-600 text-indigo-600 whitespace-nowrap'
+          : 'py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap';
+      });
+    }
+
+    // ៣. Orders Management
+    async function loadOrders() {
+      if (!tenant) return;
+      const { data } = await db
+        .from('orders')
+        .select('*, order_items(*), restaurant_tables(table_number)')
+        .eq('tenant_id', tenant.id)
+        .order('created_at', { ascending: false })
+        .limit(30);
+      orders = data || [];
+      renderOrders();
+    }
+
+    function renderOrders() {
+      const grid = document.getElementById('orders-grid');
+      if (orders.length === 0) {
+        grid.innerHTML = `<div class="col-span-full text-center py-12 bg-white rounded-2xl border border-slate-200 text-xs text-slate-400">មិនទាន់មានការកុម្ម៉ង់នៅឡើយទេ</div>`;
+        return;
+      }
+
+      const statusBadge = {
+        pending: 'bg-amber-100 text-amber-800',
+        preparing: 'bg-sky-100 text-sky-800',
+        completed: 'bg-emerald-100 text-emerald-800',
+        cancelled: 'bg-rose-100 text-rose-800'
+      };
+
+      grid.innerHTML = orders.map(o => `
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between space-y-3">
+          <div>
+            <div class="flex justify-between items-start mb-2">
+              <div>
+                <span class="font-bold text-sm text-slate-900">${escapeHtml(o.order_code)}</span>
+                <span class="ml-1.5 text-xs font-semibold text-indigo-600">🪑 តុ ${escapeHtml(o.restaurant_tables?.table_number || 'N/A')}</span>
+              </div>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${statusBadge[o.status] || 'bg-slate-100'}">${escapeHtml(o.status)}</span>
+            </div>
+            <div class="space-y-1 border-y border-slate-100 py-2 text-xs">
+              ${(o.order_items || []).map(i => `
+                <div class="flex justify-between">
+                  <span><b>${i.quantity}x</b> ${escapeHtml(i.item_name_snapshot)}</span>
+                  <span class="text-slate-500">$${(i.unit_price_usd * i.quantity).toFixed(2)}</span>
+                </div>
+              `).join('')}
+            </div>
+            ${o.customer_note ? `<p class="text-[11px] text-amber-700 mt-2">📝 ${escapeHtml(o.customer_note)}</p>` : ''}
+          </div>
+
+          <div class="space-y-2">
+            <div class="flex justify-between items-center text-xs font-bold">
+              <span>សរុប: $${Number(o.total_usd).toFixed(2)} (${Number(o.total_khr).toLocaleString()}៛)</span>
+              <button onclick="togglePaid('${o.id}', '${o.payment_status}')" class="px-2 py-0.5 rounded-md text-[10px] ${o.payment_status === 'paid' ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'}">
+                ${o.payment_status === 'paid' ? '✓ បង់រួច' : 'មិនទាន់បង់'}
+              </button>
+            </div>
+            <div class="grid grid-cols-3 gap-1.5 text-[11px] font-semibold">
+              <button onclick="updateOrderStatus('${o.id}', 'preparing')" class="py-1.5 rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100">កំពុងធ្វើ</button>
+              <button onclick="updateOrderStatus('${o.id}', 'completed')" class="py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100">រួចរាល់</button>
+              <button onclick="updateOrderStatus('${o.id}', 'cancelled')" class="py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100">បោះបង់</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function updateOrderStatus(id, status) {
+      await db.from('orders').update({ status }).eq('id', id);
+      await loadOrders();
+    }
+
+    async function togglePaid(id, current) {
+      const next = current === 'paid' ? 'unpaid' : 'paid';
+      await db.from('orders').update({ payment_status: next }).eq('id', id);
+      await loadOrders();
+    }
+
+    // ៤. Menu Management
+    async function loadMenu() {
+      const [cRes, mRes] = await Promise.all([
+        db.from('categories').select('*').eq('tenant_id', tenant.id).order('sort_order'),
+        db.from('menu_items').select('*').eq('tenant_id', tenant.id).order('created_at', { ascending: false })
+      ]);
+      categories = cRes.data || [];
+      menuItems = mRes.data || [];
+
+      document.getElementById('item-cat').innerHTML = categories.length
+        ? categories.map(c => `<option value="${c.id}">${escapeHtml(c.name_km)}</option>`).join('')
+        : `<option value="">-- សូមបង្កើតប្រភេទមុឺនុយជាមុនសិន --</option>`;
+
+      document.getElementById('menu-count').innerText = menuItems.length;
+      document.getElementById('admin-menu-list').innerHTML = menuItems.map(m => `
+        <div class="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50">
+          <div>
+            <h4 class="font-bold text-xs text-slate-900">${escapeHtml(m.name_km)} <span class="font-normal text-slate-500">(${escapeHtml(m.name_en || '')})</span></h4>
+            <p class="text-xs font-bold text-indigo-600 mt-0.5">$${Number(m.price_usd).toFixed(2)}</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="toggleAvailable('${m.id}', ${m.is_available})" class="px-2.5 py-1 rounded-lg text-[11px] font-bold ${m.is_available ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">
+              ${m.is_available ? 'មានលក់' : 'អស់ស្តុក'}
+            </button>
+            <button onclick="deleteItem('${m.id}')" class="px-2 py-1 text-xs text-rose-500 hover:bg-rose-50 rounded-lg">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function addCategory(e) {
+      e.preventDefault();
+      await db.from('categories').insert({
+        tenant_id: tenant.id,
+        name_km: document.getElementById('cat-km').value.trim(),
+        name_en: document.getElementById('cat-en').value.trim()
+      });
+      e.target.reset();
+      await loadMenu();
+    }
+
+    async function addMenuItem(e) {
+      e.preventDefault();
+      const catId = document.getElementById('item-cat').value;
+      if (!catId) { alert('សូមបង្កើតប្រភេទមុឺនុយ (Category) ជាមុនសិន!'); return; }
+
+      const hasSugar = document.getElementById('item-sugar').checked;
+      const hasSizes = document.getElementById('item-sizes').checked;
+      const tagsRaw = document.getElementById('item-tags').value.trim();
+      const ai_tags = tagsRaw ? tagsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+      const options = {
+        has_sugar: hasSugar,
+        sizes: hasSizes ? [{ name: 'S', price: 0 }, { name: 'M', price: 0.5 }, { name: 'L', price: 1.0 }] : []
+      };
+
+      const { error } = await db.from('menu_items').insert({
+        tenant_id: tenant.id,
+        category_id: catId,
+        name_km: document.getElementById('item-km').value.trim(),
+        name_en: document.getElementById('item-en').value.trim(),
+        price_usd: parseFloat(document.getElementById('item-price').value),
+        description_km: document.getElementById('item-desc').value.trim(),
+        image_url: document.getElementById('item-img').value.trim() || null,
+        ai_tags,
+        options
+      });
+
+      if (error) { alert(error.message); return; }
+      e.target.reset();
+      await loadMenu();
+    }
+
+    async function toggleAvailable(id, current) {
+      await db.from('menu_items').update({ is_available: !current }).eq('id', id);
+      await loadMenu();
+    }
+
+    async function deleteItem(id) {
+      if (!confirm('លុបមុខម្ហូបនេះមែនទេ?')) return;
+      await db.from('menu_items').delete().eq('id', id);
+      await loadMenu();
+    }
+
+    // ៥. Tables & QR Code Generator
+    async function loadTables() {
+      const { data } = await db.from('restaurant_tables').select('*').eq('tenant_id', tenant.id).order('table_number');
+      tables = data || [];
+      renderTables();
+    }
+
+    function renderTables() {
+      const base = document.getElementById('qr-base-url').value.trim();
+      const grid = document.getElementById('tables-grid');
+
+      grid.innerHTML = tables.map(t => `
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 text-center space-y-2.5">
+          <div class="font-bold text-sm text-slate-900">🪑 តុលេខ ${escapeHtml(t.table_number)}</div>
+          <div id="qr-${t.id}" class="flex justify-center p-2 bg-white rounded-xl border border-slate-100"></div>
+          <div class="flex gap-2 justify-center text-[11px] font-semibold">
+            <a href="${escapeHtml(base)}?shop=${tenant.slug}&table=${encodeURIComponent(t.table_number)}" target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200">បើកតេស្ត ↗</a>
+            <button onclick="downloadQR('qr-${t.id}', 'table-${escapeHtml(t.table_number)}.png')" class="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100">ទាញយក QR ⬇</button>
+          </div>
+        </div>
+      `).join('');
+
+      tables.forEach(t => {
+        const url = `${base}?shop=${tenant.slug}&table=${encodeURIComponent(t.table_number)}`;
+        new QRCode(document.getElementById(`qr-${t.id}`), { text: url, width: 140, height: 140 });
+      });
+    }
+
+    async function addTable(e) {
+      e.preventDefault();
+      const num = document.getElementById('new-table-num').value.trim();
+      const { error } = await db.from('restaurant_tables').insert({ tenant_id: tenant.id, table_number: num });
+      if (error) { alert(error.message); return; }
+      document.getElementById('new-table-num').value = '';
+      await loadTables();
+    }
+
+    function downloadQR(containerId, filename) {
+      const canvas = document.querySelector(`#${containerId} canvas`);
+      if (!canvas) return;
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    // ៦. Settings
+    async function saveSettings(e) {
+      e.preventDefault();
+      const { data, error } = await db.from('tenants').update({
+        name: document.getElementById('set-name').value.trim(),
+        theme_color: document.getElementById('set-color').value,
+        exchange_rate: parseInt(document.getElementById('set-rate').value) || 4000,
+        telegram_chat_id: document.getElementById('set-tg').value.trim(),
+        bakong_account_id: document.getElementById('set-khqr').value.trim()
+      }).eq('id', tenant.id).select().single();
+
+      if (error) { alert(error.message); return; }
+      tenant = data;
+      renderDashboardHeader();
+      alert('រក្សាទុកព័ត៌មានហាងជោគជ័យ! ✓');
+    }
+
+    init();
+  </script>
+</body>
+</html>
